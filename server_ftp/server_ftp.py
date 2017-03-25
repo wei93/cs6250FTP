@@ -12,15 +12,14 @@ def log(msg, clientAddr = None):
         print('\033[92m[%s] %s:%d\033[0m %s' % (time.strftime(r'%H:%M:%S, %m.%d.%Y'), clientAddr[0], clientAddr[1], msg))
 
 class DataConnSockListener(threading.Thread):
-    ''' Asynchronously accepts data connection per client '''
     def __init__(self, server, exitThreadFlag):
         super().__init__()
-        self.daemon = True 
         self.server = server
         self.listenSocket = server.dataConnListenSocket
         self.exitThreadFlag = exitThreadFlag
+        self.daemon = True 
     def run(self):
-        self.listenSocket.settimeout(1.0) # Check for every 1 second
+        self.listenSocket.settimeout(1) 
         while True:
             try:
                 (dataSocket, clientAddr) = self.listenSocket.accept()
@@ -30,7 +29,7 @@ class DataConnSockListener(threading.Thread):
             	log('Error with DataConnListenSocket')
             	break
             else:
-                if self.server.dataSocket != None: # Existing data connection not closed, cannot accept
+                if self.server.dataSocket != None: # Only one data connection at a time
                     dataSocket.close()
                     log('Data connection refused from client %s:%d.' % (clientAddr[0], clientAddr[1]), self.server.clientAddr)
                 else:
@@ -44,20 +43,20 @@ class DataConnSockListener(threading.Thread):
 class FTPServer(threading.Thread):
     def __init__(self, controlSocket, clientAddr, exitThreadFlag):
         super().__init__()
-        self.controlSocket = controlSocket  # Control connection socket served by current server thread
-        self.clientAddr = clientAddr        # Client address of control connection
+        self.controlSocket = controlSocket      # Control connection socket served by current server thread
+        self.clientAddr = clientAddr            # Client address of control connection
         self.bufferSize = 1024				
         self.daemon = True 
-        self.dataConnSockListener = None	# Data connection socket listener thread
-        self.dataConnListenSocket = None	# The listening socket to accept data connection from the client
-        self.dataSocket = None				# The accepted data connection socket from client
-        self.dataAddr = '127.0.0.1'			# Data connection server address
-        self.dataPort = None				# Data connection server port (along with address, tells client-DTP where to connect to)
+        self.dataConnSockListener = None	    # Data connection socket listener thread
+        self.dataConnListenSocket = None	    # The listening socket to accept data connection from the client
+        self.dataSocket = None				    # The accepted data connection socket from client
+        self.dataAddr = '127.0.0.1'			    # Data connection server address
+        self.dataPort = None				    # Data connection server port (along with address, tells client-DTP where to connect to)
         self.username = ''
         self.loggedIn = False
-        self.cwd = os.getcwd()				# Record current working directory of FTP
-        self.type = 'Binary'				# Data Type
-        self.dataMode = 'PORT'				# Data connection mode, only PASV is supported
+        self.cwd = os.getcwd()				    # Record current working directory of FTP
+        self.type = 'Binary'				    # Data Type
+        self.dataMode = 'PORT'				    # Data connection mode, only PASV is supported
         self.exitThreadFlag = exitThreadFlag
     def run(self):
         self.controlSocket.send(b'220 Service ready for new user.\r\n')
@@ -69,29 +68,27 @@ class FTPServer(threading.Thread):
                 log('Terminating from keyboard interrupt for current control thread.', self.clientAddr)
                 break
             command = self.controlSocket.recv(self.bufferSize).decode('ascii')
-            if command == '': # Connection closed
-                #self.controlSocket.close()
-                #log('Client disconnected.', self.clientAddr)
-                #break
+            if command == '': # Server standby
                 continue
             curuser = self.username if self.loggedIn else 'None'
-            log('[user ' + curuser + '] ' + command.strip(), self.clientAddr)
+            log('[User ' + curuser + '] ' + command.strip(), self.clientAddr)
+            command_len = len(command.split())
             cmd = command.split()[0].upper()
             if cmd == 'HELP': 
-                self.controlSocket.send(b'214 Commands supported: HELP USER PASS PASV TYPE PWD CWD NLST RETR STOR QUIT\r\n')         
+                self.controlSocket.send(b'214 Commands supported: HELP USER PASS PASV PWD CWD NLST RETR STOR QUIT\r\n')         
             elif cmd == 'USER':
-                if len(command.split()) < 2:
-                    self.controlSocket.send(b'501 Syntax error in parameters or arguments.\r\n')
+                if command_len < 2:
+                    self.controlSocket.send(b'USER: 501 Syntax error in parameters or arguments.\r\n')
                 else:
                     self.username = command.split()[1]
                     self.controlSocket.send(b'331 Username okay, need password.\r\n')
                     self.loggedIn = False
             elif cmd == 'PASS':
                 if self.username == '':
-                    self.controlSocket.send(b'503 Bad sequence of commands.\r\n')
+                    self.controlSocket.send(b'503 Bad sequence of commands. Need USER first.\r\n')
                 else:
-                    if len(command.split()) < 2:
-                        self.controlSocket.send(b'501 Syntax error in parameters or arguments.\r\n')
+                    if command_len < 2:
+                        self.controlSocket.send(b'501 PASS: Syntax error in parameters or arguments.\r\n')
                     else:
                     	'''TODO: authenticate the user'''
                     	self.controlSocket.send(b'230 User logged in.\r\n')
@@ -105,30 +102,29 @@ class FTPServer(threading.Thread):
             elif cmd == 'CWD':
                 if not self.loggedIn:
                     self.controlSocket.send(b'530 Not logged in.\r\n')
-                elif len(command.split()) < 2:
+                elif command_len < 2:
                     self.controlSocket.send(('250 "%s" is the current directory.\r\n' % self.cwd).encode('ascii'))
                 else:
                     serverDir = os.getcwd()
                     os.chdir(self.cwd)
                     newDir = command.split()[1]
                     try:
-                        os.chdir(newDir)
+                        os.chdir(newDir) # Verify new directory is valid
                     except (OSError):
                         self.controlSocket.send(b'550 Requested action not taken. File unavailable (e.g., file not found, no access).\r\n')
                     else:
                         self.cwd = os.getcwd()
                         self.controlSocket.send(('250 "%s" is the current directory now.\r\n' % self.cwd).encode('ascii'))
                     os.chdir(serverDir)
-            elif cmd == 'TYPE': # currently only I is supported
+            elif cmd == 'TYPE': 
                 if not self.loggedIn:
                     self.controlSocket.send(b'530 Not logged in.\r\n')
-                elif len(command.split()) < 2:
-                    self.controlSocket.send(b'501 Syntax error in parameters or arguments.\r\n')
+                elif command_len < 2:
+                    self.controlSocket.send(b'501 TYPE: Syntax error in parameters or arguments.\r\n')
                 elif command.split()[1] == 'I':
                     self.type = 'Binary'
                     self.controlSocket.send(b'200 Command OK. Type set to: Binary.\r\n')
                 else:
-                	'''support ascii'''
                 	self.controlSocket.send(b'504 Command not implemented for that parameter.\r\n')
             elif cmd == 'PASV': # currently only support PASV
                 if not self.loggedIn:
@@ -144,97 +140,90 @@ class FTPServer(threading.Thread):
                     self.dataConnSockListener = DataConnSockListener(self,False)
                     threadsPool.append(self.dataConnSockListener)
                     self.dataConnSockListener.start()
-                    time.sleep(0.5) # Wait for connection to set up
+                    #time.sleep(0.5)
                     daddr_split = self.dataAddr.split('.')
                     self.controlSocket.send(('227 Entering passive mode (%s,%s,%s,%s,%d,%d).\r\n' % (daddr_split[0], daddr_split[1], daddr_split[2], daddr_split[3], int(self.dataPort / 256), self.dataPort % 256)).encode('ascii'))
             elif cmd == 'NLST': 
+                time.sleep(0.5) # Wait for connection to set up
                 if not self.loggedIn:
-                    self.controlSocket.send(b'530 Not logged in.\r\n')
+                    self.controlSocket.send(b'530 NLST: Not logged in.\r\n')
                 elif self.dataMode == 'PASV' and self.dataSocket != None: # Only PASV implemented
-                    self.controlSocket.send(b'125 Data connection already open. Transfer starting.\r\n')
+                    self.controlSocket.send(b'125 NLST: Data connection already open. Transfer starting.\r\n')
                     ls = '\r\n'.join(os.listdir(self.cwd)) + '\r\n'
                     self.dataSocket.send(ls.encode('ascii'))
-                    self.controlSocket.send(b'226 Closing data connection. Requested file action successful (for example, file transfer or file abort).\r\n')
-                    self.dataSocket.close()
+                    self.controlSocket.send(b'226 NLST: Closing data connection. Requested file action successful (for example, file transfer or file abort).\r\n')
+                    self.dataSocket.close() # Close data socket once current command is complete
                     self.dataSocket = None
                 else:
-                    self.controlSocket.send(b"425 Can't open data connection.\r\n")
+                    self.controlSocket.send(b'425 NLST: Cant open data connection.\r\n')
             elif cmd == 'RETR':
+                time.sleep(0.5) # Wait for connection to set up
                 if not self.loggedIn:
-                    self.controlSocket.send(b'530 Not logged in.\r\n')
-                elif len(command.split()) < 2:
-                    self.controlSocket.send(b'501 Syntax error in parameters or arguments.\r\n')
+                    self.controlSocket.send(b'530 RETR: Not logged in.\r\n')
+                elif command_len < 2:
+                    self.controlSocket.send(b'501 RETR: Syntax error in parameters or arguments.\r\n')
                 elif self.dataMode == 'PASV' and self.dataSocket != None: # Only PASV implemented
+                    self.controlSocket.send(b'125 RETR: Data connection already open; transfer starting.\r\n')
+                    fName = command.split()[1]
                     serverDir = os.getcwd()
-                    os.chdir(self.cwd)
-                    self.controlSocket.send(b'125 Data connection already open; transfer starting.\r\n')
-                    fileName = command.split()[1]
                     try:
-                        #self.dataSocket.send(open(fileName, 'rb').read())
-                        #print('Current working dir: %s' % os.getcwd())
-                        #print('RETR file name: %s' % fileName)
-                        #basepath = os.path.dirname(__file__)
-                        #filepath = os.path.abspath(os.path.join(basepath, "..", "..", "test.txt"))
-                        fu = open(fileName, 'r')
-                        fdata = fu.read()
-                        #print('RETR %s: file data is \r\n' % filepath)
-                        #print(fdata)
-                        if False == self.dataSocket.send(fdata.encode('ascii')):
-                        	raise Exception("Buffer is full or over window size or connection is lost")
+                        os.chdir(self.cwd)
+                        self.dataSocket.send(open(fName, 'rb').read())
                     except (IOError):
-                    	log("IOError: file unavailable")
-                    	self.controlSocket.send(b'550 Requested action not taken. File unavailable (e.g., file not found, no access).\r\n')
-                    self.controlSocket.send(b'225 Closing data connection. Requested file action successful (i.e. file retrieval).\r\n')
+                    	log("RETR: IOError: file unavailable")
+                    	self.controlSocket.send(b'550 RETR: Requested action not taken. File unavailable (e.g., file not found, no access).\r\n')
+                    self.controlSocket.send(b'226 RETR: Closing data connection. Requested file action successful (i.e. file retrieval).\r\n')
                     self.dataSocket.close()
                     self.dataSocket = None
                     os.chdir(serverDir)
                 else:
-                    self.controlSocket.send(b"425 Can't open data connection.\r\n")
+                    self.controlSocket.send(b'425 RETR: Cant open data connection.\r\n')
             elif cmd == 'STOR':
+                #time.sleep(0.5) # Wait for connection to set up
                 if not self.loggedIn:
-                    self.controlSocket.send(b'530 Not logged in.\r\n')
-                elif len(command.split()) < 2:
-                    self.controlSocket.send(b'501 Syntax error in parameters or arguments.\r\n')
+                    self.controlSocket.send(b'530 STOR: Not logged in.\r\n')
+                elif command_len < 2:
+                    self.controlSocket.send(b'501 STOR: Syntax error in parameters or arguments.\r\n')
                 elif self.dataMode == 'PASV' and self.dataSocket != None: # Only PASV implemented
+                    self.controlSocket.send(b'125 STOR: Data connection already open; transfer starting.\r\n')
                     serverDir = os.getcwd()
                     os.chdir(self.cwd)
-                    self.controlSocket.send(b'125 Data connection already open; transfer starting.\r\n')
-                    fileOut = open(command.split()[1], 'wb')
-                    time.sleep(0.5) # Wait for connection to set up
+                    fName = command.split()[1]
+                    storedFile = open(fName, 'wb')
+                    time.sleep(0.5)
                     self.dataSocket.setblocking(False) 
                     while True:
                         try:
                             data = self.dataSocket.recv(self.bufferSize)
-                            if data == b'': # Connection closed
-                            	log('Did not receive any data from data connection', self.clientAddr)
+                            if data == b'': 
                             	break
-                            fileOut.write(data)
+                            storedFile.write(data)
                         except (socket.error): # Connection closed
                             break
-                    fileOut.close()
-                    self.controlSocket.send(b'225 Closing data connection. Requested file action successful (i.e. file uploading).\r\n')
+                    storedFile.close()
+                    self.controlSocket.send(b'226 STOR: Closing data connection. Requested file action successful (i.e. file uploading).\r\n')
                     self.dataSocket.close()
                     self.dataSocket = None
                     os.chdir(serverDir)
                 else:
-                    self.controlSocket.send(b"425 Can't open data connection.\r\n")
+                    self.controlSocket.send(b'425 STOR: Cant open data connection.\r\n')
             elif cmd == 'QUIT': 
                 	self.controlSocket.send(b'221 Control socket closed. Logged out.\r\n')
                 	self.controlSocket.close()
                 	self.dataConnSockListener.exitThreadFlag = True
                 	log('Client logged out. Server and DataScoketListener instances stopped', self.clientAddr)
                 	break
+            else:
+                    self.controlSocket.send(b'502 Command not implemented.\r\n')
 
 def check_command():
-	while True:
-		command = input("------------------------------------------------------------------------------------------\r\nYou need to enter 'q' to terminate all running server threads before quitting the program: \r\n------------------------------------------------------------------------------------------\r\n")
-		if(command == 'q'):
-			terminated = True
-			break
-	for t in threadsPool:
-		t.exitThreadFlag = True
-		t.join()
-	log('Terminated all children threads. Now you can control-c the program')
+    global terminated
+    while True:
+        command = input("------------------------------------------------------------------------------------------\r\nYou need to enter 'q' to terminate all running server threads and quit the program: \r\n------------------------------------------------------------------------------------------\r\n")
+        if(command == 'q'):
+            terminated = True
+            break
+    #log('Terminated all children threads. Now you can control-c the program')
 
 if __name__ == '__main__': # main thread
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) #default socket to accept client control connections
@@ -244,10 +233,24 @@ if __name__ == '__main__': # main thread
     check = threading.Thread(target=check_command)
     check.start()
     log('Server started.')
-    #serverSocket.setblocking(False)
+    serverSocket.settimeout(1)
     while True:
-        (controlSocket, clientAddr) = serverSocket.accept()
-        ftpsv = FTPServer(controlSocket, clientAddr, False)
-        threadsPool.append(ftpsv)
-        ftpsv.start() # starting one child thread of the server for this coming control sock
-        log("Connection accepted.", clientAddr)
+        try:
+            (controlSocket, clientAddr) = serverSocket.accept()
+        except (socket.timeout):
+            pass
+        except (socket.error): 
+            log('Error with DataConnListenSocket')
+            break
+        else:
+            ftpsv = FTPServer(controlSocket, clientAddr, False)
+            threadsPool.append(ftpsv)
+            ftpsv.start() # starting one child thread of the server for this coming control sock
+            log("Connection accepted.", clientAddr)
+        finally:
+            if(terminated):
+                log("Terminating the entire program.")
+                break
+    for t in threadsPool:
+        t.exitThreadFlag = True
+        t.join()
