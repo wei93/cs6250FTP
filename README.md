@@ -5,10 +5,21 @@
   2. [FTP Brief Overview](http://enterprisedt.com/publications/FTP_Overview.html)
 
 ## Documentation on *server_ftp*
+- FTP commands
+  * ```HELP```
+  * ```USER <username>```
+  * ```PASS <password>``` 
+  * ```PASV```
+  * ```CWD <absolute file_path>``` 
+  * ```PWD```
+  * ```RETR <filename>``` 
+  * ```STOR <filename>```
+  * ```QUIT```  
+  * ```NLST```
 - How to use the ftp server for ftp client:
   1. Set up a control connection socket to the server
   2. Send ```USER <username>``` via control connection sockets
-  3. Send ```PASS <username>``` (now logged in)
+  3. Send ```PASS <password>``` (now logged in)
   4. Send ```PASV``` for listening to data connection sockets from client
   5. Now you can call other file-related commands
   6. **Remember to log out by calling ```QUIT```**
