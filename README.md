@@ -16,14 +16,16 @@
   * ```STOR <filename>```
   * ```QUIT```  
   * ```NLST```
-- How to use the ftp server for ftp client:
-  1. Set up a control connection socket to the server
-  2. Send ```USER <username>``` via control connection sockets
-  3. Send ```PASS <password>``` (now logged in)
-  4. Send ```PASV``` for listening to data connection sockets from client
-  5. Now you can call other file-related commands
-  6. **Remember to log out by calling ```QUIT```**
-  7. Before exiting the server *program*, remember to type ```q``` on terminal to kill all existing children threads
+- How to use the ftp server:
+  1. Set up a control connection socket to the server by ```connect()```
+  2. ```login(<username>,<password>)```
+    * Send ```USER <username>``` via control connection sockets
+    * Send ```PASS <password>``` (now logged in)
+  3. ```pasv()```
+    * Send ```PASV``` for server to listen to data connection sockets from client
+  4. Now you can call other file-related commands: client functions same as command names except in lower cases
+  5. **Remember to log out by calling ```quit()``` after the current client is done**
+  6. To exit the server *program*, remember to type ```q``` on terminal to kill all existing children threads
 - Important things to note:
   * All replies from the server are transmitted through the control socket, except for ```NLST, RETR, STOR```
     - those three responses are transmitted through the data connection socket 
