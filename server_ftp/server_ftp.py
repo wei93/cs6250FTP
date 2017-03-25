@@ -1,4 +1,5 @@
 import socket, sys, os, threading, time, argparse
+from get_fileProperty import fileProperty
 
 defAddr = '127.0.0.1'
 defPort = 12111
@@ -149,8 +150,15 @@ class FTPServer(threading.Thread):
                     self.controlSocket.send(b'530 NLST: Not logged in.\r\n')
                 elif self.dataMode == 'PASV' and self.dataSocket != None: # Only PASV implemented
                     self.controlSocket.send(b'125 NLST: Data connection already open. Transfer starting.\r\n')
-                    ls = '\r\n'.join(os.listdir(self.cwd)) + '\r\n'
-                    self.dataSocket.send(ls.encode('ascii'))
+                    dirs = os.listdir(self.cwd)
+                    finfo = []
+                    for l in dirs:
+                        fp = os.path.join(self.cwd,l)
+                        finfo.append(fileProperty(fp))
+                        #finfo.append(fp)
+                        #log(fileProperty(fp), self.clientAddr)
+                    lsla = '\r\n'.join(finfo) + '\r\n'
+                    self.dataSocket.send(lsla.encode('ascii'))
                     self.controlSocket.send(b'226 NLST: Closing data connection. Requested file action successful (for example, file transfer or file abort).\r\n')
                     self.dataSocket.close() # Close data socket once current command is complete
                     self.dataSocket = None
