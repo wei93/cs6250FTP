@@ -146,7 +146,7 @@ class FTPClient():
         dataSocket.close()
         self.getServRes()
         
-    def stor(self, filename): # store files by file path
+    def stor(self, filePath): # Store files by file path
         if not self.connected or not self.loggedIn:
             raise Exception('Please log in first')
             return
@@ -155,8 +155,9 @@ class FTPClient():
         dataSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         dataSocket.connect(self.dataAddr)
         time.sleep(0.5) # Wait for data connection to set up
+        filename = os.path.basename(filePath)
         self.controlSocket.send(('STOR %s\r\n' % filename).encode('ascii'))
-        dataSocket.send(open(filename, 'rb').read())
+        dataSocket.send(open(filePath, 'rb').read())
         dataSocket.close()
         self.getServRes()
                     
@@ -176,11 +177,11 @@ c.connect(defAddr,defPort)
 c.login("yaling","true")
 c.pasv()
 #print('PWD out: '+c.pwd())
-#print('CWD out: '+c.cwd("/home/yalingwu/Documents"))
+print('CWD out: '+c.cwd("/home/yalingwu/Documents"))
 #print('PWD out: '+c.pwd())
-print('NLST out: '+c.nlst()) 
+#print('NLST out: '+c.nlst()) 
 #c.stor("storeTest.txt")
-#c.stor("/home/yalingwu/Documents/cs6250FTP/README.md")
+c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt")
 #print(open("/home/yalingwu/Documents/cs6250FTP/README.md", 'rb').read())
 #c.retr("retrTest.txt")
 c.quit()
