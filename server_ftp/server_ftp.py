@@ -88,11 +88,14 @@ class FTPServer(threading.Thread):
                 if command_len < 2:
                     self.controlSocket.send(b'USER: 501 Syntax error in parameters or arguments.\r\n')
                 else:
-                    #challenge = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(64))
-                    self.username = command.split()[1]
-                    self.controlSocket.send(('331 Username okay, need password.\r\n').encode('ascii'))
-                    #self.controlSocket.send(.encode('ascii'))
-                    self.loggedIn = False
+                    if(None==USERS.get(command.split()[1])):
+                        self.controlSocket.send(b'530 Not logged in. Username does not exist\r\n')
+                    else:
+                        #challenge = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(64))
+                        self.username = command.split()[1]
+                        self.controlSocket.send(('331 Username okay, need password.\r\n').encode('ascii'))
+                        #self.controlSocket.send(.encode('ascii'))
+                        self.loggedIn = False
             elif cmd == 'PASS':
                 if self.username == '':
                     self.controlSocket.send(b'503 Bad sequence of commands. Need USER first.\r\n')
@@ -101,7 +104,7 @@ class FTPServer(threading.Thread):
                         self.controlSocket.send(b'501 PASS: Syntax error in parameters or arguments.\r\n')
                     else:
                     	if command.split()[1] != USERS[self.username]:
-                            self.controlSocket.send(b'530 Not logged in.\r\n')
+                            self.controlSocket.send(b'530 Not logged in. Password not correct.\r\n')
                     	else:
                             self.controlSocket.send(b'230 User logged in.\r\n')
                             self.loggedIn = True
