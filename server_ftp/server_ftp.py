@@ -1,10 +1,16 @@
-import socket, sys, os, threading, time, argparse
+import socket, sys, os, threading, time, argparse, random, string#, hashlib
 from get_fileProperty import fileProperty
 
 defAddr = '127.0.0.1'
 defPort = 12111
 terminated = False
 threadsPool = []
+USERS = {'yaling':'true'}
+
+def hash(self, username, challenge):
+        m = hashlib.md5()
+        m.update(username + USERS[username] + challenge);
+        return m.digest()
 
 def log(msg, clientAddr = None):
     if clientAddr == None:
@@ -44,6 +50,7 @@ class DataConnSockListener(threading.Thread):
 class FTPServer(threading.Thread):
     def __init__(self, controlSocket, clientAddr, exitThreadFlag):
         super().__init__()
+        global USERS                            # Stored usernames and passwords
         self.controlSocket = controlSocket      # Control connection socket served by current server thread
         self.clientAddr = clientAddr            # Client address of control connection
         self.bufferSize = 2048				
@@ -81,8 +88,10 @@ class FTPServer(threading.Thread):
                 if command_len < 2:
                     self.controlSocket.send(b'USER: 501 Syntax error in parameters or arguments.\r\n')
                 else:
+                    #challenge = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(64))
                     self.username = command.split()[1]
-                    self.controlSocket.send(b'331 Username okay, need password.\r\n')
+                    self.controlSocket.send(('331 Username okay, need password.\r\n').encode('ascii'))
+                    #self.controlSocket.send(.encode('ascii'))
                     self.loggedIn = False
             elif cmd == 'PASS':
                 if self.username == '':
@@ -91,9 +100,11 @@ class FTPServer(threading.Thread):
                     if command_len < 2:
                         self.controlSocket.send(b'501 PASS: Syntax error in parameters or arguments.\r\n')
                     else:
-                    	'''TODO: authenticate the user'''
-                    	self.controlSocket.send(b'230 User logged in.\r\n')
-                    	self.loggedIn = True
+                    	if command.split()[1] != USERS[self.username]:
+                            self.controlSocket.send(b'530 Not logged in.\r\n')
+                    	else:
+                            self.controlSocket.send(b'230 User logged in.\r\n')
+                            self.loggedIn = True
             elif cmd == 'PWD':
                 if not self.loggedIn:
                     self.controlSocket.send(b'530 Not logged in.\r\n')
