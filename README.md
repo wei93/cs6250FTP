@@ -18,7 +18,7 @@
   * ```NLST```
 - How to use the ftp server:
   1. Set up a control connection socket to the server by ```connect()```
-  2. ```login(<username>,<password>)```
+  2. ```login(<username>,<password>)``` raises exception if login fails, otherwise returns true
     * Send ```USER <username>``` via control connection sockets
     * Send ```PASS <password>``` (now logged in)
   3. ```pasv()```
