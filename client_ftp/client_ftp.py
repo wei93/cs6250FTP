@@ -94,6 +94,20 @@ class FTPClient():
             return
         self.controlSocket.send(('CWD %s\r\n' % path).encode('ascii'))
         return self.getServRes()[1]
+    
+    def mkd(self,dirname):
+        if not self.connected or not self.loggedIn:
+            raise Exception('Please log in first')
+            return
+        self.controlSocket.send(('MKD %s\r\n' % dirname).encode('ascii'))
+        return self.getServRes()[1]
+    
+    def rmd(self,dirname):
+        if not self.connected or not self.loggedIn:
+            raise Exception('Please log in first')
+            return
+        self.controlSocket.send(('RMD %s\r\n' % dirname).encode('ascii'))
+        return self.getServRes()[1]
         
     def type(self, t):
         if not self.connected or not self.loggedIn:
@@ -138,6 +152,7 @@ class FTPClient():
             except (socket.error): # Connection closed
                 break
         dataSocket.close()
+        #time.sleep(1)
         self.getServRes()
         return out
         
@@ -164,6 +179,7 @@ class FTPClient():
                 break
         fo.close()
         dataSocket.close()
+        #time.sleep(1)
         (res, msg) = self.getServRes()
         '''TODO: return'''
         if(res<=3):
@@ -202,25 +218,28 @@ class FTPClient():
         self.controlSocket = None
         self.connected = False
            
-# c = FTPClient()
-# c.connect(defAddr,defPort)
+c = FTPClient()
+c.connect(defAddr,defPort)
 # c.login("yaling22", "true")
 # c.login('a','b')
-# c.login("yaling","true")
-# c.pasv()
+c.login("yaling","true")
+c.pasv()
 # #print('PWD out: '+c.pwd())
 # #c.nlst()
 # c.cwd("/home/yalingwu/Documents")
-# #print('CWD out: '+c.cwd("/home/yalingwu/Documents/cs6250FTP/server_ftp/test"))
+c.cwd("/home/yalingwu/Documents/cs6250FTP/server_ftp/test")
+#print('MKD out: '+c.mkd("mkdtest"))
+print('RMD out: '+c.rmd("mkdtest"))
 # #print('PWD out: '+c.pwd())
 # print('NLST out: '+c.nlst()) 
-# c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/storeTest.txt")
+#c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/storeTest.txt")
 # #time.sleep(1)
 # print(c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt"))
 # #print(open("/home/yalingwu/Documents/cs6250FTP/README.md", 'rb').read())
 # time.sleep(1)
 # 
-# #c.nlst()
-# #c.retr("retrTest.txt")
-
-# c.quit()
+#c.nlst()
+#c.nlst()
+#c.retr("retrTest.txt")
+#c.retr("retrTest.txt")
+c.quit()

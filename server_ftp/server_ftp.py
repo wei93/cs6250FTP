@@ -1,5 +1,6 @@
 import socket, sys, os, threading, time, argparse, random, string#, hashlib
 from get_fileProperty import fileProperty
+import shutil
 
 defAddr = '127.0.0.1'
 defPort = 12111
@@ -130,6 +131,39 @@ class FTPServer(threading.Thread):
                     else:
                         self.cwd = os.getcwd()
                         self.controlSocket.send(('250 "%s" is the current directory now.\r\n' % self.cwd).encode('ascii'))
+                    os.chdir(serverDir)
+            elif cmd == 'MKD':
+                if not self.loggedIn:
+                    self.controlSocket.send(b'530 Not logged in.\r\n')
+                elif command_len < 2:
+                    self.controlSocket.send(b'501 MKD: Syntax error in parameters or arguments.\r\n')
+                else:
+                    serverDir = os.getcwd()
+                    os.chdir(self.cwd)
+                    foldername = command.split()[1]
+                    try:
+                        os.mkdir(foldername)
+                    except (OSError):
+                        self.controlSocket.send(b'553 MKD: Requested action not taken. File name not allowed.\r\n')
+                    else:
+                        self.controlSocket.send(b'200 MKD: Command okay. Folder created.')
+                    os.chdir(serverDir)
+            elif cmd == 'RMD':
+                if not self.loggedIn:
+                    self.controlSocket.send(b'530 Not logged in.\r\n')
+                elif command_len < 2:
+                    self.controlSocket.send(b'501 RMD: Syntax error in parameters or arguments.\r\n')
+                else:
+                    serverDir = os.getcwd()
+                    os.chdir(self.cwd)
+                    foldername = command.split()[1]
+                    try:
+                        shutil.rmtree(foldername)
+                    except (OSError):
+                        self.controlSocket.send(b'553 RMD: Requested action not taken. File name not allowed.\r\n')
+                        self.controlSocket.send(OSError.message+'\r\n').encode('ascii')
+                    else:
+                        self.controlSocket.send(b'200 RMD: Command okay. Folder removed.')
                     os.chdir(serverDir)
             elif cmd == 'TYPE': 
                 if not self.loggedIn:
