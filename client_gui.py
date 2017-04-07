@@ -467,7 +467,15 @@ class FtpClient(QtWidgets.QWidget):
         #srcfile  = os.path.join(self.remotePwd, str(item.text(0)))
         filesize = int(item.text(1))
         dstfile  = os.path.join(self.local_pwd, str(item.text(0)))
+        print(item.text(0))
         self.ftp_client.retr(item.text(0))
+
+        time.sleep(5)
+        
+        curr_directory_path = self.local_pwd
+        commend_line = "mv " + str(item.text(0)) + " " + curr_directory_path
+        os.system(commend_line)
+
         self.updateLocalFileList()
         pb = DownloadProgressWidget(text=dstfile)
         pb.set_max(filesize)
