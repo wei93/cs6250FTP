@@ -222,10 +222,10 @@ class FTPServer(threading.Thread):
                             storedFile.write(data)
                         except (socket.error): # Connection closed
                             break
-                    storedFile.close()
-                    self.controlSocket.send(b'226 STOR: Closing data connection. Requested file action successful (i.e. file uploading).\r\n')
                     self.dataSocket.close()
                     self.dataSocket = None
+                    storedFile.close()
+                    self.controlSocket.send(b'226 STOR: Closing data connection. Requested file action successful (i.e. file uploading).\r\n')
                     os.chdir(serverDir)
                 else:
                     self.controlSocket.send(b'425 STOR: Cant open data connection.\r\n')

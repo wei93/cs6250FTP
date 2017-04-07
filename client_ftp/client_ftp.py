@@ -21,6 +21,9 @@ class FTPClient():
         #self.client_socket.send('2'+temp_username+m.digest()+"\\end")
         return temp_username+m.digest().decode('ascii')
         
+    def isConnected(self):
+        return self.connected
+        
     def getServRes(self):
         if self.controlSocket == None:
             return (5,"555 No control socket\r\n")
@@ -176,11 +179,12 @@ class FTPClient():
             return
         dataSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         dataSocket.connect(self.dataAddr)
-        time.sleep(0.5) # Wait for data connection to set up
+        time.sleep(1) # Wait for data connection to set up
         filename = os.path.basename(filePath)
         self.controlSocket.send(('STOR %s\r\n' % filename).encode('ascii'))
         dataSocket.send(open(filePath, 'rb').read())
         dataSocket.close()
+        time.sleep(1)
         (res, msg) = self.getServRes()
         if(res<=3):
             return True
@@ -198,23 +202,24 @@ class FTPClient():
         self.controlSocket = None
         self.connected = False
            
-c = FTPClient()
-c.connect(defAddr,defPort)
-c.login("yaling22", "true")
-c.login('a','b')
-c.login("yaling","true")
-c.pasv()
-#print('PWD out: '+c.pwd())
-c.nlst()
-print('CWD out: '+c.cwd("/home/yalingwu/Documents/cs6250FTP/server_ftp/test"))
-print('PWD out: '+c.pwd())
-print('NLST out: '+c.nlst()) 
-c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/storeTest.txt")
-time.sleep(1)
-print(c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt"))
-#print(open("/home/yalingwu/Documents/cs6250FTP/README.md", 'rb').read())
-time.sleep(1)
-#c.cwd("/home/yalingwu/Documents")
-#c.nlst()
-c.retr("retrTest.txt")
-c.quit()
+# c = FTPClient()
+# c.connect(defAddr,defPort)
+# c.login("yaling22", "true")
+# c.login('a','b')
+# c.login("yaling","true")
+# c.pasv()
+# #print('PWD out: '+c.pwd())
+# #c.nlst()
+# c.cwd("/home/yalingwu/Documents")
+# #print('CWD out: '+c.cwd("/home/yalingwu/Documents/cs6250FTP/server_ftp/test"))
+# #print('PWD out: '+c.pwd())
+# print('NLST out: '+c.nlst()) 
+# c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/storeTest.txt")
+# #time.sleep(1)
+# print(c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt"))
+# #print(open("/home/yalingwu/Documents/cs6250FTP/README.md", 'rb').read())
+# time.sleep(1)
+# 
+# #c.nlst()
+# #c.retr("retrTest.txt")
+# c.quit()
