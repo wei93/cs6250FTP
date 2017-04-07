@@ -161,7 +161,6 @@ class FTPServer(threading.Thread):
                         shutil.rmtree(foldername)
                     except (OSError):
                         self.controlSocket.send(b'553 RMD: Requested action not taken. File name not allowed.\r\n')
-                        self.controlSocket.send(OSError.message+'\r\n').encode('ascii')
                     else:
                         self.controlSocket.send(b'200 RMD: Command okay. Folder removed.')
                     os.chdir(serverDir)
