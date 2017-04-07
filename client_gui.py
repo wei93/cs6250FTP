@@ -48,10 +48,12 @@ class BaseGuiWidget(QtWidgets.QWidget):
         self.backButton = QtWidgets.QPushButton( )
         self.nextButton = QtWidgets.QPushButton( )
         self.hideButton = QtWidgets.QPushButton( )
+        self.refreshButton = QtWidgets.QPushButton()
         self.homeButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'home.png')))
         self.backButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'back.png')))
         self.nextButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'next.png')))
         self.hideButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'hide.png')))
+        self.refreshButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'refresh.png')))
         self.homeButton.setIconSize(QSize(20, 20))
         self.pathEdit.setEnabled(False)
         self.homeButton.setEnabled(False)
@@ -64,6 +66,7 @@ class BaseGuiWidget(QtWidgets.QWidget):
         self.hbox2.addWidget(self.backButton)
         self.hbox2.addWidget(self.nextButton)
         self.hbox2.addWidget(self.hideButton)
+        self.hbox2.addWidget(self.refreshButton)
         self.hbox2.addSpacerItem(QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
 
         self.gLayout = QtWidgets.QVBoxLayout( )
@@ -114,6 +117,7 @@ class FtpClient(QtWidgets.QWidget):
         super(FtpClient, self).__init__(parent)
         self.ftp_client = client_ftp.FTPClient()
         self.hidden = True
+        self.hiddenRemote = True
         self.setupGui( )
         #self.initialize()
         self.downloads=[ ]
@@ -125,8 +129,9 @@ class FtpClient(QtWidgets.QWidget):
         self.remote.backButton.clicked.connect(self.cdToRemoteBackDirectory)
         self.remote.nextButton.clicked.connect(self.cdToRemoteNextDirectory)
         self.remote.downloadButton.clicked.connect(self.download)
-        self.remote.hideButton.clicked.connect(self.hideFile)
-        self.local.disconnectButton.setEnabled(False)
+        self.remote.hideButton.clicked.connect(self.hideFileRemote)
+        self.remote.refreshButton.clicked.connect(self.updateRemoteFileList)
+
         #QObject.connect(self.remote.pathEdit, pyqtSignal('returnPressed( )'), self.cdToRemotePath)
 
         self.local.homeButton.clicked.connect(self.cdToLocalHomeDirectory)
@@ -138,6 +143,8 @@ class FtpClient(QtWidgets.QWidget):
         self.local.connectButton.clicked.connect(self.connect)
         self.local.hideButton.clicked.connect(self.hideFile)
         self.local.disconnectButton.clicked.connect(self.disconnectRemote)
+        self.local.disconnectButton.setEnabled(False)
+        self.local.refreshButton.clicked.connect(self.updateLocalFileList)
         #QObject.connect(self.local.pathEdit, pyqtSignal('returnPressed( )'), self.cdToLocalPath)
 
         self.progressDialog = ProgressDialog(self)
@@ -237,6 +244,8 @@ class FtpClient(QtWidgets.QWidget):
     def addItemToRemoteFileList(self, content):
         if content:
             mode, num, owner, group, size, date, filename = self.parseFileInfo(content)
+            if (filename.startswith('~') or filename.startswith('.') or filename.startswith('$')) and self.hiddenRemote:
+                return
             if content.startswith('d'):
                 icon     = QtGui.QIcon(os.path.join(app_icon_path, 'folder.png'))
                 pathname = os.path.join(self.remotePwd, filename)
@@ -371,6 +380,9 @@ class FtpClient(QtWidgets.QWidget):
     def hideFile(self):
         self.hidden = not self.hidden
         self.updateLocalFileList()
+    def hideFileRemote(self):
+        self.hiddenRemote = not self.hiddenRemote
+        self.updateRemoteFileList()
 
     def cdToLocalPath(self):
         pathname = str(self.local.pathEdit.text( ).toUtf8( ))
