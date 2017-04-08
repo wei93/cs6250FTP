@@ -5,7 +5,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5 import QtWidgets
 from get_fileProperty import fileProperty
-from dialog import loginDialog, ProgressDialog, DownloadProgressWidget, UploadProgressWidget, disconnectDialog, loginInSuccess, failLogin
+from dialog import loginDialog, ProgressDialog, DownloadProgressWidget, UploadProgressWidget, CreateNewDirectory
 from client_ftp import client_ftp
 import atexit
 import time
@@ -91,10 +91,14 @@ class LocalGuiWidget(BaseGuiWidget):
         self.uploadButton  = QtWidgets.QPushButton( )
         self.connectButton = QtWidgets.QPushButton( )
         self.disconnectButton = QtWidgets.QPushButton()
+        self.newDirectoryButton = QtWidgets.QPushButton()
         self.uploadButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'upload.png')))
         self.connectButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'connect.png')))
         self.disconnectButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'disconnect.png')))
+        self.newDirectoryButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'add_folder.png')))
+        self.newDirectoryButton.setEnabled(False)
         self.uploadButton.setEnabled(False)
+        self.hbox2.addWidget(self.newDirectoryButton)
         self.hbox2.addWidget(self.uploadButton)
         self.hbox2.addWidget(self.connectButton)
         self.hbox2.addWidget(self.disconnectButton)
@@ -105,9 +109,17 @@ class RemoteGuiWidget(BaseGuiWidget):
     def __init__(self, parent=None):
         BaseGuiWidget.__init__(self, parent)
         self.downloadButton = QtWidgets.QPushButton( )
+        self.newDirectoryButton = QtWidgets.QPushButton()
+        self.deleteFolderButton = QtWidgets.QPushButton()
+        self.deleteFolderButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'delete_folder.png')))
+        self.newDirectoryButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'add_folder.png')))
         self.downloadButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'download.png')))
         self.homeButton.setIcon(QtGui.QIcon(os.path.join(app_icon_path, 'internet.png')))
+        self.deleteFolderButton.setEnabled(False)
         self.downloadButton.setEnabled(False)
+        self.newDirectoryButton.setEnabled(False)
+        self.hbox2.addWidget(self.newDirectoryButton)
+        self.hbox2.addWidget(self.deleteFolderButton)
         self.hbox2.addWidget(self.downloadButton)
         self.groupBox.setTitle('Remote')
 
@@ -125,12 +137,14 @@ class FtpClient(QtWidgets.QWidget):
 
         self.remote.homeButton.clicked.connect(self.cdToRemoteHomeDirectory)
         self.remote.fileList.itemDoubleClicked.connect(self.cdToRemoteDirectory)
-        self.remote.fileList.itemClicked.connect(lambda: self.remote.downloadButton.setEnabled(True))
+        self.remote.fileList.itemClicked.connect(self.itemClickedRemote)
         self.remote.backButton.clicked.connect(self.cdToRemoteBackDirectory)
         self.remote.nextButton.clicked.connect(self.cdToRemoteNextDirectory)
         self.remote.downloadButton.clicked.connect(self.download)
         self.remote.hideButton.clicked.connect(self.hideFileRemote)
         self.remote.refreshButton.clicked.connect(self.updateRemoteFileList)
+        self.remote.newDirectoryButton.clicked.connect(self.createRemoteNewDirectory)
+        self.remote.deleteFolderButton.clicked.connect(self.removeRemoteDirectory)
 
         #QObject.connect(self.remote.pathEdit, pyqtSignal('returnPressed( )'), self.cdToRemotePath)
 
@@ -145,6 +159,7 @@ class FtpClient(QtWidgets.QWidget):
         self.local.disconnectButton.clicked.connect(self.disconnectRemote)
         self.local.disconnectButton.setEnabled(False)
         self.local.refreshButton.clicked.connect(self.updateLocalFileList)
+        self.local.newDirectoryButton.clicked.connect(self.createLocalNewDirectory)
         #QObject.connect(self.local.pathEdit, pyqtSignal('returnPressed( )'), self.cdToLocalPath)
 
         self.progressDialog = ProgressDialog(self)
@@ -194,6 +209,8 @@ class FtpClient(QtWidgets.QWidget):
                 self.local.connectButton.setEnabled(False)
                 self.local.uploadButton.setEnabled(True)
                 self.local.disconnectButton.setEnabled(True)
+                self.remote.newDirectoryButton.setEnabled(True)
+                self.local.newDirectoryButton.setEnabled(True)
                 self.initialize()
             except :
                 msgBox = QtWidgets.QMessageBox();
@@ -315,8 +332,35 @@ class FtpClient(QtWidgets.QWidget):
     #         self.remote.homeButton.setEnabled(True)
     #     else:
     #         self.remote.homeButton.setEnabled(False)
+    def itemClickedRemote(self):
+        self.remote.downloadButton.setEnabled(True)
+        item = self.remote.fileList.currentItem( )
+        mode = item.text(5)
+        if mode.startswith('d'):
+            self.remote.deleteFolderButton.setEnabled(True)
+
+    def removeRemoteDirectory(self):
+        item = self.remote.fileList.currentItem()
+        self.ftp_client.rmd(item.text(0))
+        self.updateRemoteFileList()
+
+    def createRemoteNewDirectory(self):
+        #app = QtWidgets.QApplication(sys.argv)
+        dialog = CreateNewDirectory()
+        text, okPressed = dialog.getText()
+        if okPressed and text != '':
+            self.ftp_client.mkd(text)
+            self.updateRemoteFileList()
+            #os.system("mkdir " + self.local_pwd + "/" + text)
+        elif okPressed:
+            msgBox = QtWidgets.QMessageBox();
+            msgBox.setIcon(QtWidgets.QMessageBox.Information)
+            msgBox.setText("Your input is illegal");
+            msgBox.exec_();
 
     def cdToRemoteDirectory(self, item, column):
+        self.remote.deleteFolderButton.setEnabled(False)
+        self.remote.downloadButton.setEnabled(False)
         self.remote.nextButton.setEnabled(False)
         pathname = os.path.join(self.remotePwd, str(item.text(0)))
         if not self.isRemoteDir(pathname):
@@ -337,6 +381,8 @@ class FtpClient(QtWidgets.QWidget):
             self.remote.homeButton.setEnabled(True)
 
     def cdToRemoteBackDirectory(self):
+        self.remote.deleteFolderButton.setEnabled(False)
+        self.remote.downloadButton.setEnabled(False)
         pathname = self.remoteBrowseRec[ self.remoteBrowseRec.index(self.remotePwd)-1 ]
         if pathname != self.remoteBrowseRec[0]:
             self.remote.backButton.setEnabled(True)
@@ -353,6 +399,8 @@ class FtpClient(QtWidgets.QWidget):
         self.updateRemoteFileList( )
 
     def cdToRemoteNextDirectory(self):
+        self.remote.deleteFolderButton.setEnabled(False)
+        self.remote.downloadButton.setEnabled(False)
         pathname = self.remoteBrowseRec[self.remoteBrowseRec.index(self.remotePwd)+1]
         if pathname != self.remoteBrowseRec[-1]:
             self.remote.nextButton.setEnabled(True)
@@ -373,10 +421,25 @@ class FtpClient(QtWidgets.QWidget):
         self.remotePwd = self.remoteOriginPath
         self.updateRemoteFileList( )
         self.remote.homeButton.setEnabled(False)
+        self.remote.deleteFolderButton.setEnabled(False)
+        self.remote.downloadButton.setEnabled(False)
 
     #-------------------------#
     ## for local file system ##
     #-------------------------#
+    def createLocalNewDirectory(self):
+        #app = QtWidgets.QApplication(sys.argv)
+        dialog = CreateNewDirectory()
+        text, okPressed = dialog.getText()
+        if okPressed and text != '':
+            os.system("mkdir " + self.local_pwd + "/" + text)
+            self.updateLocalFileList()
+        elif okPressed:
+            msgBox = QtWidgets.QMessageBox();
+            msgBox.setIcon(QtWidgets.QMessageBox.Information)
+            msgBox.setText("Your input is illegal");
+            msgBox.exec_();
+
     def hideFile(self):
         self.hidden = not self.hidden
         self.updateLocalFileList()

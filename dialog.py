@@ -261,6 +261,15 @@ class ProgressDialog(QtWidgets.QMainWindow):
 
     def removeProgressbar(self, progressbar):
         self.layout.removeWidget(progressbar)
+        
+
+class CreateNewDirectory(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+    def getText(self):
+        text, okPressed = QtWidgets.QInputDialog.getText(self, "Create New Directory", "Please Enter the new directory name:", QtWidgets.QLineEdit.Normal, "")
+        return text, okPressed
 
 def loginDialog(parent=None):
     login = LoginDialog(parent)
