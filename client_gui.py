@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #--*--encoding:utf8--*--
+# reference: https://github.com/jacklam718/ftp
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import *
