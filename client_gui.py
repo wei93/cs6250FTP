@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #--*--encoding:utf8--*--
+# reference: https://github.com/jacklam718/ftp
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import *
@@ -533,7 +534,7 @@ class FtpClient(QtWidgets.QWidget):
         print(item.text(0))
         self.ftp_client.retr(item.text(0))
 
-        time.sleep(5)
+        #time.sleep(5)
         
         curr_directory_path = self.local_pwd
         commend_line = "mv " + str(item.text(0)) + " " + curr_directory_path
@@ -563,7 +564,7 @@ class FtpClient(QtWidgets.QWidget):
         item     = self.local.fileList.currentItem( )
         srcfile  = os.path.join(self.local_pwd, str(item.text(0)))
         self.ftp_client.stor(srcfile)
-        time.sleep(5)
+        #time.sleep(5)
         self.updateRemoteFileList()
         filesize = int(item.text(1))
         #dstfile  = os.path.join(self.remotePwd, str(item.text(0)))
