@@ -1,6 +1,7 @@
 import socket, sys, os, threading, time, argparse, random, string#, hashlib
 from get_fileProperty import fileProperty
 import shutil
+import datetime
 
 defAddr = '127.0.0.1'
 defPort = 12111
@@ -17,7 +18,7 @@ def log(msg, clientAddr = None):
     if clientAddr == None:
         print('\033[92m[%s]\033[0m %s' % (time.strftime(r'%H:%M:%S, %m.%d.%Y'), msg))
     else:
-        print('\033[92m[%s] %s:%d\033[0m %s' % (time.strftime(r'%H:%M:%S, %m.%d.%Y'), clientAddr[0], clientAddr[1], msg))
+        print('\033[92m[%s] %s:%d\033[0m %s' % (datetime.datetime.now().strftime("%H:%M:%S.%f"), clientAddr[0], clientAddr[1], msg))
 
 class DataConnSockListener(threading.Thread):
     def __init__(self, server, exitThreadFlag):
@@ -233,6 +234,7 @@ class FTPServer(threading.Thread):
                     os.chdir(serverDir)
                 else:
                     self.controlSocket.send(b'425 RETR: Cant open data connection.\r\n')
+                log('[User ' + curuser + '] ' + command.strip()+' RETR finish', self.clientAddr)
             elif cmd == 'STOR':
                 #time.sleep(0.5) # Wait for connection to set up
                 if not self.loggedIn:
@@ -262,6 +264,7 @@ class FTPServer(threading.Thread):
                     os.chdir(serverDir)
                 else:
                     self.controlSocket.send(b'425 STOR: Cant open data connection.\r\n')
+                log('[User ' + curuser + '] ' + command.strip()+' STOR finish', self.clientAddr)
             elif cmd == 'QUIT': 
                 	self.controlSocket.send(b'221 Control socket closed. Logged out.\r\n')
                 	self.controlSocket.close()
