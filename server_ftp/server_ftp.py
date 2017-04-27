@@ -85,7 +85,7 @@ class FTPServer(threading.Thread):
             command_len = len(command.split())
             cmd = command.split()[0].upper()
             if cmd == 'HELP': 
-                self.controlSocket.send(b'214 Commands supported: HELP USER PASS PASV PWD CWD NLST RETR STOR QUIT\r\n')         
+                self.controlSocket.send(b'214 Commands supported: HELP USER PASS PASV PWD CWD MKD RMD NLST RETR STOR QUIT\r\n')         
             elif cmd == 'USER':
                 if command_len < 2:
                     self.controlSocket.send(b'USER: 501 Syntax error in parameters or arguments.\r\n')
@@ -213,7 +213,7 @@ class FTPServer(threading.Thread):
                 else:
                     self.controlSocket.send(b'425 NLST: Cant open data connection.\r\n')
             elif cmd == 'RETR':
-                time.sleep(1) # Wait for connection to set up
+                time.sleep(1) # Wait for data connection to set up at this end
                 if not self.loggedIn:
                     self.controlSocket.send(b'530 RETR: Not logged in.\r\n')
                 elif command_len < 2:
@@ -247,7 +247,7 @@ class FTPServer(threading.Thread):
                     os.chdir(self.cwd)
                     fName = command.split()[1]
                     storedFile = open(fName, 'wb')
-                    time.sleep(0.5) # Wait for data to come
+                    time.sleep(0.5) # Wait for data to come from client
                     self.dataSocket.setblocking(False) 
                     while True:
                         try:

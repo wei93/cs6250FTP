@@ -1,4 +1,4 @@
-import sys, socket, os, re, time, hashlib
+import sys, socket, os, re, time, hashlib,datetime
 
 defAddr = '127.0.0.1'
 defPort = 12111
@@ -12,6 +12,7 @@ class FTPClient():
         self.connected = False
         self.loggedIn = False
         self.dataMode = 'PORT'
+        self.port = None
         
     def hash(self, username, password, challenge):
         m = hashlib.md5()
@@ -20,7 +21,13 @@ class FTPClient():
         #self.print_debug_message("Sending username:" + self.username + " and hash:" + m.digest())
         #self.client_socket.send('2'+temp_username+m.digest()+"\\end")
         return temp_username+m.digest().decode('ascii')
-        
+    
+    def log(self,msg, port = 0):
+        if port == None:
+            print('\033[92m[%s]\033[0m %s' % (time.strftime(r'%H:%M:%S, %m.%d.%Y'), msg))
+        else:
+            print('\033[92m[%s] %d\033[0m %s' % (datetime.datetime.now().strftime("%H:%M:%S.%f"), port, msg))
+    
     def isConnected(self):
         return self.connected
         
@@ -58,6 +65,7 @@ class FTPClient():
         if self.getServRes()[0] <= 3:
             self.connected = True
             self.controlSocket.settimeout(1)
+            self.port = self.controlSocket.getsockname()[1]
         else:
             raise Exception('Control connection failed. Please try again.')
             
@@ -157,6 +165,7 @@ class FTPClient():
         return out
         
     def retr(self, filename):
+        self.log('RETR START: '+filename, self.port)
         if not self.connected or not self.loggedIn:
             raise Exception('Please log in first')
             return
@@ -167,7 +176,7 @@ class FTPClient():
         dataSocket.connect(self.dataAddr)
         dataSocket.setblocking(False) 
         self.controlSocket.send(('RETR %s\r\n' % filename).encode('ascii'))
-        time.sleep(1.5) # Wait for data to come in
+        time.sleep(1.5) # Wait for file data to come in
         fo = open(filename, 'wb')
         while True:
             try:
@@ -181,6 +190,7 @@ class FTPClient():
         dataSocket.close()
         #time.sleep(1)
         (res, msg) = self.getServRes()
+        self.log('RETR FINISH: '+filename, self.port)
         '''TODO: return'''
         if(res<=3):
             return True
@@ -188,6 +198,8 @@ class FTPClient():
             return False
         
     def stor(self, filePath): # Store files by file path
+        filename = os.path.basename(filePath)
+        #self.log('STOR START: '+filename, self.port)
         if not self.connected or not self.loggedIn:
             raise Exception('Please log in first')
             return
@@ -195,13 +207,15 @@ class FTPClient():
             return
         dataSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         dataSocket.connect(self.dataAddr)
-        time.sleep(1) # Wait for data connection to set up
-        filename = os.path.basename(filePath)
+        time.sleep(1) # Wait for data connection to set up at server
+        #self.log('pre sending: '+filename, self.port)
         self.controlSocket.send(('STOR %s\r\n' % filename).encode('ascii'))
+        #self.log('post sending: '+filename, self.port)
         dataSocket.send(open(filePath, 'rb').read())
         dataSocket.close()
-        time.sleep(1)
+        time.sleep(1) # wait for data connection to close at server
         (res, msg) = self.getServRes()
+        #self.log('STOR FINISH: '+filename, self.port)
         if(res<=3):
             return True
         else:
@@ -233,7 +247,7 @@ if __name__ == '__main__':
     #print('RMD out: '+c.rmd("mkdtest"))
     #print('PWD out: '+c.pwd())
     # print('NLST out: '+c.nlst()) 
-    c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/207stor.mp4")
+    c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/97stor.mp4")
     #c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/490stor.rmvb")
     # #time.sleep(1)
     # print(c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt"))
@@ -243,6 +257,6 @@ if __name__ == '__main__':
     #c.nlst()
     #c.nlst()
     #c.retr("retrTest.txt")
-    #c.retr("230retr.mp4")
-    #c.retr("490retr.rmvb")
+    #c.retr("207retr.mp4")
+    #c.retr("339retr.rmvb")
     c.quit()
