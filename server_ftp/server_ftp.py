@@ -247,7 +247,7 @@ class FTPServer(threading.Thread):
                     os.chdir(self.cwd)
                     fName = command.split()[1]
                     storedFile = open(fName, 'wb')
-                    time.sleep(0.5) # Wait for data to come from client
+                    time.sleep(1) # Wait for data to come from client
                     self.dataSocket.setblocking(False) 
                     while True:
                         try:

@@ -165,7 +165,7 @@ class FTPClient():
         return out
         
     def retr(self, filename):
-        self.log('RETR START: '+filename, self.port)
+        #self.log('RETR START: '+filename, self.port)
         if not self.connected or not self.loggedIn:
             raise Exception('Please log in first')
             return
@@ -176,7 +176,7 @@ class FTPClient():
         dataSocket.connect(self.dataAddr)
         dataSocket.setblocking(False) 
         self.controlSocket.send(('RETR %s\r\n' % filename).encode('ascii'))
-        time.sleep(1.5) # Wait for file data to come in
+        time.sleep(2) # Wait for file data to come in
         fo = open(filename, 'wb')
         while True:
             try:
@@ -190,7 +190,7 @@ class FTPClient():
         dataSocket.close()
         #time.sleep(1)
         (res, msg) = self.getServRes()
-        self.log('RETR FINISH: '+filename, self.port)
+        #self.log('RETR FINISH: '+filename, self.port)
         '''TODO: return'''
         if(res<=3):
             return True
@@ -247,8 +247,8 @@ if __name__ == '__main__':
     #print('RMD out: '+c.rmd("mkdtest"))
     #print('PWD out: '+c.pwd())
     # print('NLST out: '+c.nlst()) 
-    c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/97stor.mp4")
-    #c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/490stor.rmvb")
+    #c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/97stor.mp4")
+    c.stor("/home/yalingwu/Documents/cs6250FTP/client_ftp/490stor.rmvb")
     # #time.sleep(1)
     # print(c.stor("/home/yalingwu/Documents/cs6250FTP/storeTest2.txt"))
     # #print(open("/home/yalingwu/Documents/cs6250FTP/README.md", 'rb').read())
@@ -258,5 +258,5 @@ if __name__ == '__main__':
     #c.nlst()
     #c.retr("retrTest.txt")
     #c.retr("207retr.mp4")
-    #c.retr("339retr.rmvb")
+    c.retr("490retr.rmvb")
     c.quit()
